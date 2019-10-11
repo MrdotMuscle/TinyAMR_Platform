@@ -51,7 +51,7 @@ def readPosition(id):
     time.sleep(0.00034)  #小延时，等命令发送完毕。不知道是否能进行这么精确的延时的，但是修改这个值的确实会产生影响。
                          #实验测试调到这个值的时候效果最好
  
-    time.sleep(0.005)  #稍作延时，等待接收完毕
+    time.sleep(0.003)  #稍作延时，等待接收完毕
     count = serialHandle.inWaiting() #获取接收缓存中的字节数
     pos = None
     if count != 0: #如果接收到的数据不空
