@@ -1,3 +1,4 @@
+#include <avr/interrupt.h>
 long system_clock = 16000000;
 
 long prescaler = 1;
@@ -30,11 +31,7 @@ long prescaler = 1;
 
 #define SCK 52
 
-
-
 #define MS3_State LOW
-
-
 
 #define SCALER_1 B00000001
 
@@ -51,6 +48,8 @@ int scaler[] = {SCALER_1, SCALER_8, SCALER_64, SCALER_256, SCALER_1024};
 int FREQ = 60;
 
 int data[5] = {0,0,0,0,0};
+
+int timernumber = 252;
 
 
 
@@ -84,7 +83,34 @@ void setup() {
 
   pinMode(12, OUTPUT);
 
+  noInterrupts();
+
+  TCCR2A = 0x00; // overflow mode
+
+  TCCR2B = 0x05; // 128 prescaler
+
+  TCNT2 = TimerInterruptFrequency(802);
+
+  TIFR2 = 0x00;
+
+  TIMSK2 = 0x01;  // enable timer compare interrupt A
+
+  interrupts();             // enable all interrupts   
+
 }
+
+ISR(TIMER2_OVF_vect)          // timer compare interrupt service routine
+{
+  // motor frequency ++
+  digitalWrite(12, digitalRead(12) ^ 1);
+  TCNT2 = TimerInterruptFrequency(802);
+  TIFR2 = 0x00;
+}
+
+long int TimerInterruptFrequency(long int Fqec){
+  return 256 - 125000 / Fqec;
+}
+
 
 
 
@@ -105,7 +131,6 @@ void motorFrequency(int motorNum, int frequency, int direct){
   switch(motorNum){
 
     case 1:
-
       pinMode(STEP_1, OUTPUT);
 
       TCCR3A = B01010111;    // Fast PWM
@@ -214,62 +239,39 @@ int mode_select = 1;
 
 int F_Lim = 9000;
 
-
-
-
-
-
 String sep = "=======================";
 
-
-
-void loop() {
-  bool flag; 
+  void loop() {   
   char buff[9];
   if(Serial.available()){
-    digitalWrite(12, HIGH);
+//    digitalWrite(12, HIGH);
     Serial.readBytesUntil('\n', buff, 10);
-    data[0] = ((int)buff[0] << 8) | buff[1];
-    data[1] = ((int)buff[2] << 8) | buff[3];
-    data[2] = ((int)buff[4] << 8) | buff[5];
-    data[3] = ((int)buff[6]<< 8) | buff[7];     
+    data[0] = (((int)buff[0]) << 8) | buff[1];
+    data[1] = (((int)buff[2]) << 8) | buff[3];
+    data[2] = (((int)buff[4]) << 8) | buff[5];
+    data[3] = (((int)buff[6])<< 8) | buff[7];     
     data[4] = buff[8];    
-    digitalWrite(12, LOW);   
+//    digitalWrite(12, LOW);   
  }
-
-
   for(int i = 0; i < 5; i ++){
     Serial.println(data[i]);
     delayMicroseconds(300);
   }
   Serial.println(sep);
 
-  
 
   if(mode_select){
-
     F_Lim = 12000;
-
     motorFrequency(1, FREQ, 1);  // motor number: 1, 2, 3, 4  frquency(speed) direction: 1, 0
-
     motorFrequency(2, FREQ, 1);
-
     motorFrequency(3, FREQ, 0);
-
     motorFrequency(4, FREQ, 0); 
-
   }
-
   else{
-
     F_Lim = 7500;
-
     motorFrequency(1, FREQ, 0);  // motor number: 1, 2, 3, 4  frquency(speed) direction: 1, 0
-
     motorFrequency(2, FREQ, 0);
-
     motorFrequency(3, FREQ, 0);  
-
     motorFrequency(4, FREQ, 0); 
 
   }
